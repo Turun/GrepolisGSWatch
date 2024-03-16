@@ -1,0 +1,19 @@
+version: "3.3"  # debian...
+services:
+  turunmap:
+    build: "./"
+    container_name: "gregswatch"
+    expose: 
+      - 10203
+    ports:
+      - "10204:10204"
+    volumes: 
+      - "/data/grepolis_gs_watch:/app"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
+    working_dir: "/app"
+    restart: "unless-stopped"
+
+# network not required, since we map the port to the host
+# alternatively we could also put this behind caddy
+# for now I'll leave the port mapping in

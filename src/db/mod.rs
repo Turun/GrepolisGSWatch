@@ -25,37 +25,10 @@ impl DB {
     pub fn start(&mut self) {
         //ensure DB Schema
 
-        self.conn
-            .execute(
-                "CREATE TABLE IF NOT EXISTS player_disappeared (
-                    date TEXT NOT NULL,
-                    name TEXT NOT NULL,
-                    towns INTEGER NOT NULL,
-                    points INTEGER NOT NULL,
-                    rank INTEGER NOT NULL,
-                    alliance TEXT
-                );
-                CREATE TABLE IF NOT EXISTS gs_appeared (
-                    date TEXT NOT NULL,
-                    name TEXT NOT NULL,
-                    points INTEGER NOT NULL,
-                    x REAL NOT NULL,
-                    y REAL NOT NULL,
-                    player TEXT NOT NULL,
-                    alliance TEXT NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS gs_disappeared (
-                    date TEXT NOT NULL,
-                    name TEXT NOT NULL,
-                    points INTEGER NOT NULL,
-                    x REAL NOT NULL,
-                    y REAL NOT NULL,
-                    player TEXT NOT NULL,
-                    alliance TEXT 
-                );",
-                (),
-            )
-            .expect("Failed to define the Database Schema");
+        self.ensure_db_schema();
+
+        // bring the webserver up to speed on the data we already have.
+        self.send_update_to_webserver();
 
         for msg in &self.rx {
             println!("Got Message to DB from Model: {msg}");
@@ -130,43 +103,90 @@ impl DB {
             // for this we turn the db table into a vector of tuples. Limited in length to keep it managable
 
             // TODO: make web and db more coupled and allow for filtering by position x/y
+            self.send_update_to_webserver();
+        }
+    }
 
-            let gs_old = self
-                .conn
-                .prepare("SELECT * FROM gs_disappeared ORDER BY date LIMIT 200")
-                .expect("failed to prepare gs disappeared extraction statement")
-                .query([])
-                .expect("Failed to query db for gs appeared")
-                .mapped(|r| OrmGS::try_from(r))
-                .collect::<Result<Vec<_>, rusqlite::Error>>()
-                .expect("Failed to collect the rows from the DB");
-            let gs_new = self
-                .conn
-                .prepare("SELECT * FROM gs_appeared ORDER BY date LIMIT 200")
-                .expect("failed to prepare gs appeared extraction statement")
-                .query([])
-                .expect("Failed to query db for gs appeared")
-                .mapped(|r| OrmGS::try_from(r))
-                .collect::<Result<Vec<_>, rusqlite::Error>>()
-                .expect("Failed to collect the rows from the DB");
-            let players = self
-                .conn
-                .prepare("SELECT * FROM players_disappeared ORDER BY date LIMIT 200")
-                .expect("failed to prepare gs appeared extraction statement")
-                .query([])
-                .expect("Failed to query db for gs appeared")
-                .mapped(|r| OrmPlayer::try_from(r))
-                .collect::<Result<Vec<_>, rusqlite::Error>>()
-                .expect("Failed to collect the rows from the DB");
+    fn ensure_db_schema(&self) {
+        self.conn
+            .execute(
+                "CREATE TABLE IF NOT EXISTS player_disappeared (
+                    date TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    towns INTEGER NOT NULL,
+                    points INTEGER NOT NULL,
+                    rank INTEGER NOT NULL,
+                    alliance TEXT
+                );",
+                (),
+            )
+            .expect("Failed to define the Database Schema");
+        self.conn
+            .execute(
+                "CREATE TABLE IF NOT EXISTS gs_appeared (
+                    date TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    points INTEGER NOT NULL,
+                    x REAL NOT NULL,
+                    y REAL NOT NULL,
+                    player TEXT NOT NULL,
+                    alliance TEXT NOT NULL
+                );",
+                (),
+            )
+            .expect("Failed to define the Database Schema");
+        self.conn
+            .execute(
+                "CREATE TABLE IF NOT EXISTS gs_disappeared (
+                    date TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    points INTEGER NOT NULL,
+                    x REAL NOT NULL,
+                    y REAL NOT NULL,
+                    player TEXT NOT NULL,
+                    alliance TEXT 
+                );",
+                (),
+            )
+            .expect("Failed to define the Database Schema");
+    }
 
-            let res = self.tx.send(MessageFromDBToWeb::NewData(CachedDBState {
-                gs_old,
-                gs_new,
-                players_old: players,
-            }));
-            if let Err(err) = res {
-                eprintln!("Failed to send update to webserver: {err:?}");
-            }
+    fn send_update_to_webserver(&self) {
+        let gs_old = self
+            .conn
+            .prepare("SELECT * FROM gs_disappeared ORDER BY date LIMIT 200")
+            .expect("failed to prepare gs disappeared extraction statement")
+            .query([])
+            .expect("Failed to query db for gs appeared")
+            .mapped(|r| OrmGS::try_from(r))
+            .collect::<Result<Vec<_>, rusqlite::Error>>()
+            .expect("Failed to collect the rows from the DB");
+        let gs_new = self
+            .conn
+            .prepare("SELECT * FROM gs_appeared ORDER BY date LIMIT 200")
+            .expect("failed to prepare gs appeared extraction statement")
+            .query([])
+            .expect("Failed to query db for gs appeared")
+            .mapped(|r| OrmGS::try_from(r))
+            .collect::<Result<Vec<_>, rusqlite::Error>>()
+            .expect("Failed to collect the rows from the DB");
+        let players = self
+            .conn
+            .prepare("SELECT * FROM player_disappeared ORDER BY date LIMIT 200")
+            .expect("failed to prepare gs appeared extraction statement")
+            .query([])
+            .expect("Failed to query db for gs appeared")
+            .mapped(|r| OrmPlayer::try_from(r))
+            .collect::<Result<Vec<_>, rusqlite::Error>>()
+            .expect("Failed to collect the rows from the DB");
+
+        let res = self.tx.send(MessageFromDBToWeb::NewData(CachedDBState {
+            gs_old,
+            gs_new,
+            players_old: players,
+        }));
+        if let Err(err) = res {
+            eprintln!("Failed to send update to webserver: {err:?}");
         }
     }
 }
