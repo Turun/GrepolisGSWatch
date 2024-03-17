@@ -61,13 +61,10 @@ impl DB {
                             gs.points,
                             gs.island.0,
                             gs.island.1,
-                            gs.player.as_ref().unwrap().1.name.as_str(),
+                            gs.player.as_ref().map(|p| p.1.name.as_str()),
                             gs.player
                                 .as_ref()
-                                .unwrap()
-                                .1
-                                .alliance
-                                .as_ref()
+                                .map(|p| p.1.alliance.as_ref())
                                 .map(|a| a.1.name.as_str()),
                         ));
                     }
@@ -83,13 +80,10 @@ impl DB {
                             gs.points,
                             gs.island.0,
                             gs.island.1,
-                            gs.player.as_ref().unwrap().1.name.as_str(),
+                            gs.player.as_ref().map(|p| p.1.name.as_str()),
                             gs.player
                                 .as_ref()
-                                .unwrap()
-                                .1
-                                .alliance
-                                .as_ref()
+                                .map(|p| p.1.alliance.as_ref())
                                 .map(|a| a.1.name.as_str()),
                         ));
                     }
