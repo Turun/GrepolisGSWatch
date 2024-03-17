@@ -2,8 +2,9 @@
 #![allow(clippy::needless_return)]
 
 use std::{panic, process, sync::mpsc, thread};
-use tracing::Level;
-use tracing_subscriber::FmtSubscriber;
+
+use tracing_subscriber::filter::EnvFilter;
+use tracing_subscriber::filter::LevelFilter;
 
 use crate::{
     db::DB,
@@ -19,10 +20,15 @@ mod web;
 
 fn main() {
     // setup logging
-    let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::TRACE)
-        .finish();
-    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+    let filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::WARN.into())
+        .from_env()
+        .expect("failed to create logging filter")
+        .add_directive("grepolis_diff_server=debug".parse().unwrap());
+    tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .compact()
+        .init();
 
     // all threads communicate via message passing
     let (tx_model_to_db, rx_db_from_model) = mpsc::channel::<MessageFromModelToDB>();
