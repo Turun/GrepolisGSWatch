@@ -64,8 +64,9 @@ impl DB {
                             gs.player.as_ref().map(|p| p.1.name.as_str()),
                             gs.player
                                 .as_ref()
-                                .map(|p| p.1.alliance.as_ref())
-                                .map(|a| a.1.name.as_str()),
+                                .map(|(_, p)| p.alliance.as_ref())
+                                .flatten()
+                                .map(|(_, a)| a.name.as_str()),
                         ));
                     }
                 }
@@ -83,8 +84,9 @@ impl DB {
                             gs.player.as_ref().map(|p| p.1.name.as_str()),
                             gs.player
                                 .as_ref()
-                                .map(|p| p.1.alliance.as_ref())
-                                .map(|a| a.1.name.as_str()),
+                                .map(|(_, p)| p.alliance.as_ref())
+                                .flatten()
+                                .map(|(_, a)| a.name.as_str()),
                         ));
                     }
                 }
