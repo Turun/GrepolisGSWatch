@@ -4,6 +4,8 @@ use anyhow::Context;
 use reqwest;
 use std::sync::Arc;
 
+use tracing::info;
+
 fn download_generic<U>(
     client: &reqwest::blocking::Client,
     url: U,
@@ -13,7 +15,7 @@ where
 {
     let url_text = format!("{url}");
     let result = client.get(url).send()?;
-    println!("Got status {} for url {}", result.status(), url_text);
+    info!("Got status {} for url {}", result.status(), url_text);
     let text = result.text()?;
 
     Ok(text)

@@ -1,6 +1,8 @@
 #![warn(clippy::pedantic)]
 
 use std::{panic, process, sync::mpsc, thread};
+use tracing::Level;
+use tracing_subscriber::FmtSubscriber;
 
 use crate::{
     db::DB,
@@ -15,6 +17,12 @@ mod model;
 mod web;
 
 fn main() {
+    // setup logging
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::TRACE)
+        .finish();
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+
     // all threads communicate via message passing
     let (tx_model_to_db, rx_db_from_model) = mpsc::channel::<MessageFromModelToDB>();
     let (tx_db_to_web, rx_web_from_db) = mpsc::channel::<MessageFromDBToWeb>();

@@ -1,4 +1,5 @@
 use std::{sync::mpsc::Sender, thread, time};
+use tracing::{error, info, warn};
 
 use crate::messages::MessageFromModelToDB;
 
@@ -23,11 +24,11 @@ impl Model {
             let dt = DataTable::create_for_world("de99");
             match dt {
                 Ok(dt) => {
-                    println!("Sucessfully loaded a new DataTable",);
+                    info!("Successfully loaded a new DataTable");
                     break dt;
                 }
                 Err(err) => {
-                    eprintln!("Failed to load DB: {:?}", err);
+                    warn!("Failed to load DB: {:?}", err);
                     thread::sleep(time::Duration::from_secs(60));
                 }
             }
@@ -57,7 +58,7 @@ impl Model {
             }
             let res = self.tx.send(MessageFromModelToDB::GSAppeared(gs_appeared));
             if let Err(err) = res {
-                eprintln!("Failed to send list of appeared GS to Database: {}", err);
+                error!("Failed to send list of appeared GS to Database: {}", err);
             }
 
             // Determine which GS are no longer present
@@ -72,7 +73,7 @@ impl Model {
                 .tx
                 .send(MessageFromModelToDB::GSDisappeared(gs_disappeared));
             if let Err(err) = res {
-                eprintln!("Failed to send list of disappeared GS to Database: {}", err);
+                error!("Failed to send list of disappeared GS to Database: {}", err);
             }
 
             // Determine which player no longer exists
@@ -87,7 +88,7 @@ impl Model {
                 players_disappeared,
             ));
             if let Err(err) = res {
-                eprintln!(
+                error!(
                     "Failed to send list of disappeared Players to Database: {}",
                     err
                 );

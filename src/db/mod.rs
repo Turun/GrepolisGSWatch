@@ -8,6 +8,10 @@ use std::sync::mpsc::{Receiver, Sender};
 
 pub mod orm;
 
+use tracing::debug;
+use tracing::error;
+use tracing::info;
+
 pub struct DB {
     rx: Receiver<MessageFromModelToDB>,
     tx: Sender<MessageFromDBToWeb>,
@@ -31,63 +35,76 @@ impl DB {
         self.send_update_to_webserver();
 
         for msg in &self.rx {
-            println!("Got Message to DB from Model: {msg}");
+            debug!("Got Message to DB from Model: {msg}");
             let now = Utc::now();
             let transaction = self.conn.transaction().expect("Failed to open transaction");
-            match msg {
+            match &msg {
                 MessageFromModelToDB::PlayersDisappeared(players) => {
-                    let mut prepared_statement = transaction
-                        .prepare("INSERT INTO player_disappeared VALUES(?1, ?2, ?3, ?4, ?5, ?6)")
-                        .expect("failed to prepare statement");
-                    for p in players {
-                        let _res = prepared_statement.execute((
-                            now,
-                            p.name.as_str(),
-                            p.towns,
-                            p.points,
-                            p.rank,
-                            p.alliance.as_ref().map(|a| a.1.name.as_str()),
-                        ));
+                    if !players.is_empty() {
+                        info!("Got Message to DB from Model: {msg}");
+                        let mut prepared_statement = transaction
+                            .prepare(
+                                "INSERT INTO player_disappeared VALUES(?1, ?2, ?3, ?4, ?5, ?6)",
+                            )
+                            .expect("failed to prepare statement");
+                        for p in players {
+                            let _res = prepared_statement.execute((
+                                now,
+                                p.name.as_str(),
+                                p.towns,
+                                p.points,
+                                p.rank,
+                                p.alliance.as_ref().map(|a| a.1.name.as_str()),
+                            ));
+                        }
                     }
                 }
                 MessageFromModelToDB::GSAppeared(gss) => {
-                    let mut prepared_statement = transaction
-                        .prepare("INSERT INTO gs_appeared VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)")
-                        .expect("failed to prepare statement");
-                    for gs in gss {
-                        let _res = prepared_statement.execute((
-                            now,
-                            gs.name.as_str(),
-                            gs.points,
-                            gs.island.0,
-                            gs.island.1,
-                            gs.player.as_ref().map(|p| p.1.name.as_str()),
-                            gs.player
-                                .as_ref()
-                                .map(|(_, p)| p.alliance.as_ref())
-                                .flatten()
-                                .map(|(_, a)| a.name.as_str()),
-                        ));
+                    if !gss.is_empty() {
+                        info!("Got Message to DB from Model: {msg}");
+                        let mut prepared_statement = transaction
+                            .prepare("INSERT INTO gs_appeared VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)")
+                            .expect("failed to prepare statement");
+                        for gs in gss {
+                            let _res = prepared_statement.execute((
+                                now,
+                                gs.name.as_str(),
+                                gs.points,
+                                gs.island.0,
+                                gs.island.1,
+                                gs.player.as_ref().map(|p| p.1.name.as_str()),
+                                gs.player
+                                    .as_ref()
+                                    .map(|(_, p)| p.alliance.as_ref())
+                                    .flatten()
+                                    .map(|(_, a)| a.name.as_str()),
+                            ));
+                        }
                     }
                 }
                 MessageFromModelToDB::GSDisappeared(gss) => {
-                    let mut prepared_statement = transaction
-                        .prepare("INSERT INTO gs_disappeared VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)")
-                        .expect("failed to prepare statement");
-                    for gs in gss {
-                        let _res = prepared_statement.execute((
-                            now,
-                            gs.name.as_str(),
-                            gs.points,
-                            gs.island.0,
-                            gs.island.1,
-                            gs.player.as_ref().map(|p| p.1.name.as_str()),
-                            gs.player
-                                .as_ref()
-                                .map(|(_, p)| p.alliance.as_ref())
-                                .flatten()
-                                .map(|(_, a)| a.name.as_str()),
-                        ));
+                    if !gss.is_empty() {
+                        info!("Got Message to DB from Model: {msg}");
+                        let mut prepared_statement = transaction
+                            .prepare(
+                                "INSERT INTO gs_disappeared VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                            )
+                            .expect("failed to prepare statement");
+                        for gs in gss {
+                            let _res = prepared_statement.execute((
+                                now,
+                                gs.name.as_str(),
+                                gs.points,
+                                gs.island.0,
+                                gs.island.1,
+                                gs.player.as_ref().map(|p| p.1.name.as_str()),
+                                gs.player
+                                    .as_ref()
+                                    .map(|(_, p)| p.alliance.as_ref())
+                                    .flatten()
+                                    .map(|(_, a)| a.name.as_str()),
+                            ));
+                        }
                     }
                 }
             }
@@ -148,7 +165,7 @@ impl DB {
     }
 
     fn send_update_to_webserver(&self) {
-        let gs_old = self
+        let gs_conquered = self
             .conn
             .prepare("SELECT * FROM gs_disappeared ORDER BY date LIMIT 200")
             .expect("failed to prepare gs disappeared extraction statement")
@@ -157,7 +174,7 @@ impl DB {
             .mapped(|r| OrmGS::try_from(r))
             .collect::<Result<Vec<_>, rusqlite::Error>>()
             .expect("Failed to collect the rows from the DB");
-        let gs_new = self
+        let gs_appeared = self
             .conn
             .prepare("SELECT * FROM gs_appeared ORDER BY date LIMIT 200")
             .expect("failed to prepare gs appeared extraction statement")
@@ -166,7 +183,7 @@ impl DB {
             .mapped(|r| OrmGS::try_from(r))
             .collect::<Result<Vec<_>, rusqlite::Error>>()
             .expect("Failed to collect the rows from the DB");
-        let players = self
+        let players_left = self
             .conn
             .prepare("SELECT * FROM player_disappeared ORDER BY date LIMIT 200")
             .expect("failed to prepare gs appeared extraction statement")
@@ -177,12 +194,12 @@ impl DB {
             .expect("Failed to collect the rows from the DB");
 
         let res = self.tx.send(MessageFromDBToWeb::NewData(CachedDBState {
-            gs_old,
-            gs_new,
-            players_old: players,
+            gs_conquered,
+            gs_appeared,
+            players_left,
         }));
         if let Err(err) = res {
-            eprintln!("Failed to send update to webserver: {err:?}");
+            error!("Failed to send update to webserver: {err:?}");
         }
     }
 }
