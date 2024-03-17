@@ -63,11 +63,11 @@ impl Web {
     ) -> Result<String, axum::http::StatusCode> {
         debug!("Serving a request!");
         let inner = cache.lock().unwrap();
-        Ok(String::from(format!(
+        Ok(format!(
             "Hello World! DB Contents: OldGS {} / NewGS {} / Players {}",
             inner.gs_conquered.len(),
             inner.gs_appeared.len(),
             inner.players_left.len()
-        )))
+        ))
     }
 }

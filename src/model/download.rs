@@ -1,7 +1,7 @@
 use super::database::{Alliance, DataTable, Island, Offset, Player, Town};
 use super::offset_data;
 use anyhow::Context;
-use reqwest;
+
 use std::sync::Arc;
 
 use tracing::info;
@@ -73,32 +73,32 @@ impl DataTable {
             .join()
             .expect("Failed to join AllianceData fetching thread")
             .context("Failed to download alliance data")?;
-        let alliances = Self::parse_alliances(data_alliances)?;
+        let alliances = Self::parse_alliances(&data_alliances)?;
 
         let data_islands = handle_data_islands
             .join()
             .expect("Failed to join islandData fetching thread")
             .context("Failed to download island data")?;
-        let islands = Self::parse_islands(data_islands)?;
+        let islands = Self::parse_islands(&data_islands)?;
 
         let data_players = handle_data_players
             .join()
             .expect("Failed to join PlayerData fetching thread")
             .context("Failed to download player data")?;
-        let players = Self::parse_players(data_players, &alliances)?;
+        let players = Self::parse_players(&data_players, &alliances)?;
 
         let data_towns = handle_data_towns
             .join()
             .expect("Failed to join TownData fetching thread")
             .context("Failed to download town data")?;
-        let towns = Self::parse_towns(data_towns, &players, &islands, &offsets)?;
+        let towns = Self::parse_towns(&data_towns, &players, &islands, &offsets)?;
 
         Ok(Self {
-            towns,
             offsets,
             islands,
             alliances,
             players,
+            towns,
         })
     }
 
@@ -106,7 +106,7 @@ impl DataTable {
         let lines: Vec<&str> = offset_data::OFFSET_DATA.lines().collect();
         let mut re = Vec::with_capacity(lines.len());
         for line in lines {
-            let mut values = line.split(",");
+            let mut values = line.split(',');
             let typ: u8 = values.next().unwrap().parse().unwrap();
             let x: u16 = values.next().unwrap().parse().unwrap();
             let y: u16 = values.next().unwrap().parse().unwrap();
@@ -121,7 +121,7 @@ impl DataTable {
         return re;
     }
 
-    fn parse_alliances(data: String) -> anyhow::Result<Vec<Arc<Alliance>>> {
+    fn parse_alliances(data: &str) -> anyhow::Result<Vec<Arc<Alliance>>> {
         let lines: Vec<&str> = data.lines().collect();
         let mut re = Vec::with_capacity(lines.len());
         for line in lines {
@@ -173,7 +173,7 @@ impl DataTable {
         return Ok(re);
     }
 
-    fn parse_islands(data: String) -> anyhow::Result<Vec<Arc<Island>>> {
+    fn parse_islands(data: &str) -> anyhow::Result<Vec<Arc<Island>>> {
         let lines: Vec<&str> = data.lines().collect();
         let mut re = Vec::with_capacity(lines.len());
         for line in lines {
@@ -225,10 +225,7 @@ impl DataTable {
         return Ok(re);
     }
 
-    fn parse_players(
-        data: String,
-        alliances: &Vec<Arc<Alliance>>,
-    ) -> anyhow::Result<Vec<Arc<Player>>> {
+    fn parse_players(data: &str, alliances: &[Arc<Alliance>]) -> anyhow::Result<Vec<Arc<Player>>> {
         let lines: Vec<&str> = data.lines().collect();
         let mut re = Vec::with_capacity(lines.len());
         for line in lines {
@@ -278,11 +275,7 @@ impl DataTable {
 
             let alliance_tuple = if let Some(alliance_id) = opt_alliance_id {
                 let opt_alliance = alliances.iter().find(|a| a.id == alliance_id);
-                if let Some(alliance) = opt_alliance {
-                    Some((alliance_id, Arc::clone(alliance)))
-                } else {
-                    None
-                }
+                opt_alliance.map(|alliance| (alliance_id, Arc::clone(alliance)))
             } else {
                 None
             };
@@ -299,11 +292,12 @@ impl DataTable {
         return Ok(re);
     }
 
+    #[allow(clippy::cast_lossless)]
     fn parse_towns(
-        data: String,
-        players: &Vec<Arc<Player>>,
-        islands: &Vec<Arc<Island>>,
-        offsets: &Vec<Arc<Offset>>,
+        data: &str,
+        players: &[Arc<Player>],
+        islands: &[Arc<Island>],
+        offsets: &[Arc<Offset>],
     ) -> anyhow::Result<Vec<Arc<Town>>> {
         let lines: Vec<&str> = data.lines().collect();
         let mut re = Vec::with_capacity(lines.len());
@@ -361,11 +355,7 @@ impl DataTable {
             // get actual player from the player id
             let player_tuple = if let Some(player_id) = opt_player_id {
                 let opt_player = players.iter().find(|p| p.id == player_id);
-                if let Some(player) = opt_player {
-                    Some((player_id, Arc::clone(player)))
-                } else {
-                    None
-                }
+                opt_player.map(|player| (player_id, Arc::clone(player)))
             } else {
                 None
             };

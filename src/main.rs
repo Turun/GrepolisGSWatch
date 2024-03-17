@@ -1,4 +1,5 @@
 #![warn(clippy::pedantic)]
+#![allow(clippy::needless_return)]
 
 use std::{panic, process, sync::mpsc, thread};
 use tracing::Level;

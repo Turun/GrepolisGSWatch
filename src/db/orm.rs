@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use rusqlite::Row;
 
+#[allow(clippy::module_name_repetitions)]
 pub struct OrmGS {
     date: DateTime<Utc>,
     name: String,
@@ -27,6 +28,7 @@ impl<'a> TryFrom<&Row<'a>> for OrmGS {
     }
 }
 
+#[allow(clippy::module_name_repetitions)]
 pub struct OrmPlayer {
     date: DateTime<Utc>,
     name: String,
