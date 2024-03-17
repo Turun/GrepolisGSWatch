@@ -54,7 +54,7 @@ impl DB {
                                 p.towns,
                                 p.points,
                                 p.rank,
-                                p.alliance.as_ref().map(|a| a.1.name.as_str()),
+                                p.alliance.as_ref().map(|s| s.as_str()),
                             ));
                         }
                     }
@@ -70,13 +70,10 @@ impl DB {
                                 now,
                                 gs.name.as_str(),
                                 gs.points,
-                                gs.island.0,
-                                gs.island.1,
-                                gs.player.as_ref().map(|p| p.1.name.as_str()),
-                                gs.player
-                                    .as_ref()
-                                    .and_then(|(_, p)| p.alliance.as_ref())
-                                    .map(|(_, a)| a.name.as_str()),
+                                gs.x,
+                                gs.y,
+                                gs.player_name.as_ref().map(|s| s.as_str()),
+                                gs.alliance_name.as_ref().map(|s| s.as_str()),
                             ));
                         }
                     }
@@ -94,13 +91,10 @@ impl DB {
                                 now,
                                 gs.name.as_str(),
                                 gs.points,
-                                gs.island.0,
-                                gs.island.1,
-                                gs.player.as_ref().map(|p| p.1.name.as_str()),
-                                gs.player
-                                    .as_ref()
-                                    .and_then(|(_, p)| p.alliance.as_ref())
-                                    .map(|(_, a)| a.name.as_str()),
+                                gs.x,
+                                gs.y,
+                                gs.player_name.as_ref().map(|s| s.as_str()),
+                                gs.alliance_name.as_ref().map(|s| s.as_str()),
                             ));
                         }
                     }

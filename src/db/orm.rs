@@ -1,15 +1,35 @@
 use chrono::{DateTime, Utc};
 use rusqlite::Row;
 
+use crate::model::database::{Player, Town};
+
 #[allow(clippy::module_name_repetitions)]
 pub struct OrmGS {
-    date: DateTime<Utc>,
-    name: String,
-    points: u16,
-    x: f32,
-    y: f32,
-    player_name: String,
-    alliance_name: Option<String>,
+    pub date: DateTime<Utc>,
+    pub name: String,
+    pub points: u16,
+    pub x: f32,
+    pub y: f32,
+    pub player_name: Option<String>,
+    pub alliance_name: Option<String>,
+}
+
+impl<'a> From<(DateTime<Utc>, &'a Town<'a>)> for OrmGS {
+    fn from((now, town): (DateTime<Utc>, &'a Town)) -> Self {
+        Self {
+            date: now,
+            name: town.name.clone(),
+            points: town.points,
+            x: town.actual_x,
+            y: town.actual_y,
+            player_name: town.player.map(|(_, p)| p.name.clone()),
+            alliance_name: town
+                .player
+                .map(|(_, p)| p.alliance)
+                .flatten()
+                .map(|(_, a)| a.name.clone()),
+        }
+    }
 }
 
 impl<'a> TryFrom<&Row<'a>> for OrmGS {
@@ -30,13 +50,27 @@ impl<'a> TryFrom<&Row<'a>> for OrmGS {
 
 #[allow(clippy::module_name_repetitions)]
 pub struct OrmPlayer {
-    date: DateTime<Utc>,
-    name: String,
-    towns: u16,
-    points: u32,
-    rank: u16,
-    alliance: Option<String>,
+    pub date: DateTime<Utc>,
+    pub name: String,
+    pub towns: u16,
+    pub points: u32,
+    pub rank: u16,
+    pub alliance: Option<String>,
 }
+
+impl<'a> From<(DateTime<Utc>, &'a Player<'a>)> for OrmPlayer {
+    fn from((now, player): (DateTime<Utc>, &'a Player)) -> Self {
+        Self {
+            date: now,
+            name: player.name.clone(),
+            towns: player.towns,
+            points: player.points,
+            rank: player.rank,
+            alliance: player.alliance.map(|(_, a)| a.name.clone()),
+        }
+    }
+}
+
 impl<'a> TryFrom<&Row<'a>> for OrmPlayer {
     type Error = rusqlite::Error;
 

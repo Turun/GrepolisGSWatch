@@ -2,6 +2,7 @@ use super::database::{Alliance, DataTable, Island, Offset, Player, Town};
 use super::offset_data;
 use anyhow::Context;
 
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use tracing::info;
@@ -30,8 +31,9 @@ fn make_client() -> reqwest::blocking::Client {
         .unwrap()
 }
 
-impl DataTable {
-    pub fn create_for_world(server_id: &str) -> anyhow::Result<Self> {
+impl<'a> DataTable<'a> {
+    /// fetches data from the api and saves the processed data to self
+    pub fn create_for_world(&'a mut self, server_id: &str) -> anyhow::Result<()> {
         let reqwest_client = make_client();
 
         let thread_client = reqwest_client.clone();
@@ -67,63 +69,60 @@ impl DataTable {
             )
         });
 
-        let offsets = Self::make_offsets();
+        self.offsets = Self::make_offsets();
 
         let data_alliances = handle_data_alliances
             .join()
             .expect("Failed to join AllianceData fetching thread")
             .context("Failed to download alliance data")?;
-        let alliances = Self::parse_alliances(&data_alliances)?;
+        self.alliances = Self::parse_alliances(&data_alliances)?;
 
         let data_islands = handle_data_islands
             .join()
             .expect("Failed to join islandData fetching thread")
             .context("Failed to download island data")?;
-        let islands = Self::parse_islands(&data_islands)?;
+        self.islands = Self::parse_islands(&data_islands)?;
 
         let data_players = handle_data_players
             .join()
             .expect("Failed to join PlayerData fetching thread")
             .context("Failed to download player data")?;
-        let players = Self::parse_players(&data_players, &alliances)?;
+        self.players = Self::parse_players(&data_players, &self.alliances)?;
 
         let data_towns = handle_data_towns
             .join()
             .expect("Failed to join TownData fetching thread")
             .context("Failed to download town data")?;
-        let towns = Self::parse_towns(&data_towns, &players, &islands, &offsets)?;
+        self.towns = Self::parse_towns(&data_towns, &self.players, &self.islands, &self.offsets)?;
 
-        Ok(Self {
-            offsets,
-            islands,
-            alliances,
-            players,
-            towns,
-        })
+        return Ok(());
     }
 
-    fn make_offsets() -> Vec<Arc<Offset>> {
+    fn make_offsets() -> HashMap<u8, Offset> {
         let lines: Vec<&str> = offset_data::OFFSET_DATA.lines().collect();
-        let mut re = Vec::with_capacity(lines.len());
+        let mut re = HashMap::with_capacity(lines.len());
         for line in lines {
             let mut values = line.split(',');
             let typ: u8 = values.next().unwrap().parse().unwrap();
             let x: u16 = values.next().unwrap().parse().unwrap();
             let y: u16 = values.next().unwrap().parse().unwrap();
             let slot_number: u8 = values.next().unwrap().parse().unwrap();
-            re.push(Arc::new(Offset {
-                typ,
-                x,
-                y,
+            re.insert(
                 slot_number,
-            }));
+                Offset {
+                    typ,
+                    x,
+                    y,
+                    slot_number,
+                },
+            );
         }
         return re;
     }
 
-    fn parse_alliances(data: &str) -> anyhow::Result<Vec<Arc<Alliance>>> {
+    fn parse_alliances(data: &str) -> anyhow::Result<HashMap<u32, Alliance>> {
         let lines: Vec<&str> = data.lines().collect();
-        let mut re = Vec::with_capacity(lines.len());
+        let mut re = HashMap::with_capacity(lines.len());
         for line in lines {
             let mut values = line.split(',');
 
@@ -161,21 +160,24 @@ impl DataTable {
                 .with_context(|| format!("No ally rank in {line}"))?
                 .parse()
                 .with_context(|| format!("No ally rank in {line} that can be parsed as int"))?;
-            re.push(Arc::new(Alliance {
+            re.insert(
                 id,
-                name,
-                points,
-                towns,
-                members,
-                rank,
-            }));
+                Alliance {
+                    id,
+                    name,
+                    points,
+                    towns,
+                    members,
+                    rank,
+                },
+            );
         }
         return Ok(re);
     }
 
-    fn parse_islands(data: &str) -> anyhow::Result<Vec<Arc<Island>>> {
+    fn parse_islands(data: &str) -> anyhow::Result<HashMap<(u16, u16), Island>> {
         let lines: Vec<&str> = data.lines().collect();
-        let mut re = Vec::with_capacity(lines.len());
+        let mut re = HashMap::with_capacity(lines.len());
         for line in lines {
             let mut values = line.split(',');
 
@@ -212,22 +214,28 @@ impl DataTable {
                 .next()
                 .with_context(|| format!("No island res- in {line}"))?
                 .to_string();
-            re.push(Arc::new(Island {
-                id,
-                x,
-                y,
-                typ,
-                towns,
-                ressource_plus,
-                ressource_minus,
-            }));
+            re.insert(
+                (x, y),
+                Island {
+                    id,
+                    x,
+                    y,
+                    typ,
+                    towns,
+                    ressource_plus,
+                    ressource_minus,
+                },
+            );
         }
         return Ok(re);
     }
 
-    fn parse_players(data: &str, alliances: &[Arc<Alliance>]) -> anyhow::Result<Vec<Arc<Player>>> {
+    fn parse_players<'b>(
+        data: &str,
+        alliances: &'b HashMap<u32, Alliance>,
+    ) -> anyhow::Result<HashMap<u32, Player<'b>>> {
         let lines: Vec<&str> = data.lines().collect();
-        let mut re = Vec::with_capacity(lines.len());
+        let mut re = HashMap::with_capacity(lines.len());
         for line in lines {
             let mut values = line.split(',');
 
@@ -273,34 +281,41 @@ impl DataTable {
                 .parse()
                 .with_context(|| format!("No player towns in {line} that can be parsed as int"))?;
 
-            let alliance_tuple = if let Some(alliance_id) = opt_alliance_id {
-                let opt_alliance = alliances.iter().find(|a| a.id == alliance_id);
-                opt_alliance.map(|alliance| (alliance_id, Arc::clone(alliance)))
+            let opt_alliance_tuple = if let Some(alliance_id) = opt_alliance_id {
+                let opt_alliance = alliances.get(&alliance_id);
+                if let Some(alliance) = opt_alliance {
+                    Some((alliance_id, alliance))
+                } else {
+                    None
+                }
             } else {
                 None
             };
 
-            re.push(Arc::new(Player {
+            re.insert(
                 id,
-                name,
-                alliance: alliance_tuple,
-                points,
-                rank,
-                towns,
-            }));
+                Player {
+                    id,
+                    name,
+                    alliance: opt_alliance_tuple,
+                    points,
+                    rank,
+                    towns,
+                },
+            );
         }
         return Ok(re);
     }
 
     #[allow(clippy::cast_lossless)]
-    fn parse_towns(
+    fn parse_towns<'c>(
         data: &str,
-        players: &[Arc<Player>],
-        islands: &[Arc<Island>],
-        offsets: &[Arc<Offset>],
-    ) -> anyhow::Result<Vec<Arc<Town>>> {
+        players: &'c HashMap<u32, Player>,
+        islands: &'c HashMap<(u16, u16), Island>,
+        offsets: &'c HashMap<u8, Offset>,
+    ) -> anyhow::Result<HashMap<u32, Town<'c>>> {
         let lines: Vec<&str> = data.lines().collect();
-        let mut re = Vec::with_capacity(lines.len());
+        let mut re = HashMap::with_capacity(lines.len());
         for line in lines {
             let mut values = line.split(',');
             let id = values
@@ -353,59 +368,40 @@ impl DataTable {
                 .with_context(|| format!("No town points in {line} that can be parsed as int"))?;
 
             // get actual player from the player id
-            let player_tuple = if let Some(player_id) = opt_player_id {
-                let opt_player = players.iter().find(|p| p.id == player_id);
-                opt_player.map(|player| (player_id, Arc::clone(player)))
+            let opt_player_tuple = if let Some(player_id) = opt_player_id {
+                let opt_player = players.get(&player_id);
+                if let Some(alliance) = opt_player {
+                    Some((player_id, alliance))
+                } else {
+                    None
+                }
             } else {
                 None
             };
 
             // get actual island from x and y
-            let island_tuple = (
-                x,
-                y,
-                Arc::clone(islands.iter().find(|i| i.x == x && i.y == y).unwrap()),
-            );
-            //     let opt_island = islands.iter().find(|i| i.x == x && i.y == y);
-            //     if let Some(island) = opt_island {
-            //         Arc::clone(island)
-            //     } else {
-            //         Arc::clone(&islands[0])
-            //     }
-            // });
+            let island_tuple = (x, y, islands.get(&(x, y)).unwrap());
 
             // get the offset from the offset list from slot_number
-            let offset_tuple = (
-                slot_number,
-                Arc::clone(
-                    offsets
-                        .iter()
-                        .find(|o| o.slot_number == slot_number)
-                        .unwrap(),
-                ),
-            );
-            // let opt_offset = offsets.iter().find(|o| o.slot_number == slot_number);
-            // if let Some(offset) = opt_offset {
-            //     Arc::clone(offset)
-            // } else {
-            //     Arc::clone(&offsets[0])
-            // }
-            // });
+            let offset_tuple = (slot_number, offsets.get(&slot_number).unwrap());
 
             // compute actual x
             let actual_x = x as f32 + offset_tuple.1.x as f32 / 125f32;
             let actual_y = y as f32 + offset_tuple.1.y as f32 / 125f32;
 
-            re.push(Arc::new(Town {
+            re.insert(
                 id,
-                name,
-                points,
-                player: player_tuple,
-                island: island_tuple,
-                offset: offset_tuple,
-                actual_x,
-                actual_y,
-            }));
+                Town {
+                    id,
+                    name,
+                    points,
+                    player: opt_player_tuple,
+                    island: island_tuple,
+                    offset: offset_tuple,
+                    actual_x,
+                    actual_y,
+                },
+            );
         }
         return Ok(re);
     }

@@ -1,7 +1,11 @@
+use chrono::Utc;
 use std::{sync::mpsc::Sender, thread, time};
 use tracing::{error, info, warn};
 
-use crate::messages::MessageFromModelToDB;
+use crate::{
+    db::orm::{OrmGS, OrmPlayer},
+    messages::MessageFromModelToDB,
+};
 
 use self::database::DataTable;
 
@@ -53,7 +57,7 @@ impl Model {
             for gsn in &gs_new {
                 let has_a_match = gs_old.iter().any(|gs| gs.id == gsn.id);
                 if !has_a_match {
-                    gs_appeared.push(gsn.clone());
+                    gs_appeared.push(OrmGS::from((now, *gsn)));
                 }
             }
             let res = self.tx.send(MessageFromModelToDB::GSAppeared(gs_appeared));
@@ -66,7 +70,7 @@ impl Model {
             for gso in &gs_old {
                 let has_match = gs_new.iter().any(|gs| gs.id == gso.id);
                 if !has_match {
-                    gs_disappeared.push(gso.clone());
+                    gs_disappeared.push(OrmGS::from((now, *gso)));
                 }
             }
             let res = self
@@ -78,10 +82,10 @@ impl Model {
 
             // Determine which player no longer exists
             let mut players_disappeared = Vec::new();
-            for po in state_old.players {
-                let has_match = state_new.players.iter().any(|p| p.id == po.id);
+            for (ido, po) in &state_old.players {
+                let has_match = state_new.players.iter().any(|(idn, _)| ido == idn);
                 if !has_match {
-                    players_disappeared.push(po.clone());
+                    players_disappeared.push(OrmPlayer::from((now, po)));
                 }
             }
             let res = self.tx.send(MessageFromModelToDB::PlayersDisappeared(

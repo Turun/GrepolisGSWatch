@@ -4,14 +4,15 @@ use core::fmt;
 use std::sync::Arc;
 
 use crate::{
+    db::orm::{OrmGS, OrmPlayer},
     model::database::{Player, Town},
     web::CachedDBState,
 };
 
 pub enum MessageFromModelToDB {
-    GSDisappeared(Vec<Arc<Town>>),
-    GSAppeared(Vec<Arc<Town>>),
-    PlayersDisappeared(Vec<Arc<Player>>),
+    GSDisappeared(Vec<OrmGS>),
+    GSAppeared(Vec<OrmGS>),
+    PlayersDisappeared(Vec<OrmPlayer>),
 }
 
 impl fmt::Display for MessageFromModelToDB {
