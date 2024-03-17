@@ -1,10 +1,10 @@
 version: "3.3"  # debian...
 services:
-  turunmap:
+  grepolis_gs_watch:
     build: "./"
     container_name: "gregswatch"
     expose: 
-      - 10203
+      - 10204
     ports:
       - "10204:10204"
     volumes: 
