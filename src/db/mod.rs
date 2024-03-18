@@ -8,8 +8,8 @@ use std::sync::mpsc::{Receiver, Sender};
 
 pub mod orm;
 
-use tracing::error;
 use tracing::info;
+use tracing::{debug, error};
 
 pub struct DB {
     rx: Receiver<MessageFromModelToDB>,
@@ -46,7 +46,8 @@ impl DB {
                             )
                             .expect("failed to prepare statement");
                         for p in players {
-                            let _res = prepared_statement.execute((
+                            debug!("Inserting {p:?} into DB");
+                            let res = prepared_statement.execute((
                                 now,
                                 p.name.as_str(),
                                 p.towns,
@@ -54,6 +55,9 @@ impl DB {
                                 p.rank,
                                 p.alliance.as_deref(),
                             ));
+                            if let Err(err) = res {
+                                error!("Failed to insert player into DB: {err:?}");
+                            }
                         }
                     }
                 }
@@ -64,7 +68,8 @@ impl DB {
                             .prepare("INSERT INTO gs_appeared VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)")
                             .expect("failed to prepare statement");
                         for gs in gss {
-                            let _res = prepared_statement.execute((
+                            debug!("Inserting {gs:?} into DB.gs_appeared");
+                            let res = prepared_statement.execute((
                                 now,
                                 gs.name.as_str(),
                                 gs.points,
@@ -73,6 +78,9 @@ impl DB {
                                 gs.player_name.as_deref(),
                                 gs.alliance_name.as_deref(),
                             ));
+                            if let Err(err) = res {
+                                error!("Failed to insert gs into DB: {err:?}");
+                            }
                         }
                     }
                 }
@@ -85,7 +93,8 @@ impl DB {
                             )
                             .expect("failed to prepare statement");
                         for gs in gss {
-                            let _res = prepared_statement.execute((
+                            debug!("Inserting {gs:?} into DB.gs_disappeared");
+                            let res = prepared_statement.execute((
                                 now,
                                 gs.name.as_str(),
                                 gs.points,
@@ -94,6 +103,9 @@ impl DB {
                                 gs.player_name.as_deref(),
                                 gs.alliance_name.as_deref(),
                             ));
+                            if let Err(err) = res {
+                                error!("Failed to insert gs into DB: {err:?}");
+                            }
                         }
                     }
                 }

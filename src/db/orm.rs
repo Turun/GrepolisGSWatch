@@ -6,6 +6,7 @@ use rusqlite::Row;
 use crate::model::database::{Alliance, Player, Town};
 
 #[allow(clippy::module_name_repetitions)]
+#[derive(Debug)]
 pub struct OrmGS {
     pub date: DateTime<Utc>,
     pub name: String,
@@ -65,6 +66,7 @@ impl<'a> TryFrom<&Row<'a>> for OrmGS {
 }
 
 #[allow(clippy::module_name_repetitions)]
+#[derive(Debug)]
 pub struct OrmPlayer {
     pub date: DateTime<Utc>,
     pub name: String,
