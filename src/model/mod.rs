@@ -44,6 +44,7 @@ impl Model {
         loop {
             thread::sleep(time::Duration::from_secs(5 * 60));
             let now = Utc::now();
+            let mut tracked_any_updates = false;
 
             let state_new = Self::get_datatable_for_sure();
             if state_new == state_old {
@@ -66,9 +67,12 @@ impl Model {
                     )));
                 }
             }
-            let res = self.tx.send(MessageFromModelToDB::GSAppeared(gs_appeared));
-            if let Err(err) = res {
-                error!("Failed to send list of appeared GS to Database: {}", err);
+            if !gs_appeared.is_empty() {
+                tracked_any_updates = true;
+                let res = self.tx.send(MessageFromModelToDB::GSAppeared(gs_appeared));
+                if let Err(err) = res {
+                    error!("Failed to send list of appeared GS to Database: {}", err);
+                }
             }
 
             // Determine which GS are no longer present
@@ -84,11 +88,14 @@ impl Model {
                     )));
                 }
             }
-            let res = self
-                .tx
-                .send(MessageFromModelToDB::GSDisappeared(gs_disappeared));
-            if let Err(err) = res {
-                error!("Failed to send list of disappeared GS to Database: {}", err);
+            if !gs_disappeared.is_empty() {
+                tracked_any_updates = true;
+                let res = self
+                    .tx
+                    .send(MessageFromModelToDB::GSDisappeared(gs_disappeared));
+                if let Err(err) = res {
+                    error!("Failed to send list of disappeared GS to Database: {}", err);
+                }
             }
 
             // Determine which player no longer exists
@@ -99,14 +106,21 @@ impl Model {
                     players_disappeared.push(OrmPlayer::from((now, po, &state_old.alliances)));
                 }
             }
-            let res = self.tx.send(MessageFromModelToDB::PlayersDisappeared(
-                players_disappeared,
-            ));
-            if let Err(err) = res {
-                error!(
-                    "Failed to send list of disappeared Players to Database: {}",
-                    err
-                );
+            if !players_disappeared.is_empty() {
+                tracked_any_updates = true;
+                let res = self.tx.send(MessageFromModelToDB::PlayersDisappeared(
+                    players_disappeared,
+                ));
+                if let Err(err) = res {
+                    error!(
+                        "Failed to send list of disappeared Players to Database: {}",
+                        err
+                    );
+                }
+            }
+
+            if !tracked_any_updates {
+                info!("No changes this time");
             }
 
             state_old = state_new;

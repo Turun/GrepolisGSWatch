@@ -8,7 +8,6 @@ use std::sync::mpsc::{Receiver, Sender};
 
 pub mod orm;
 
-use tracing::debug;
 use tracing::error;
 use tracing::info;
 
@@ -35,13 +34,12 @@ impl DB {
         self.send_update_to_webserver();
 
         for msg in &self.rx {
-            debug!("Got Message to DB from Model: {msg}");
             let now = Utc::now();
             let transaction = self.conn.transaction().expect("Failed to open transaction");
             match &msg {
                 MessageFromModelToDB::PlayersDisappeared(players) => {
                     if !players.is_empty() {
-                        info!("Got Message to DB from Model: {msg}");
+                        info!("Got Message from Model to DB: {msg}");
                         let mut prepared_statement = transaction
                             .prepare(
                                 "INSERT INTO player_disappeared VALUES(?1, ?2, ?3, ?4, ?5, ?6)",
@@ -61,7 +59,7 @@ impl DB {
                 }
                 MessageFromModelToDB::GSAppeared(gss) => {
                     if !gss.is_empty() {
-                        info!("Got Message to DB from Model: {msg}");
+                        info!("Got Message from Model to DB: {msg}");
                         let mut prepared_statement = transaction
                             .prepare("INSERT INTO gs_appeared VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)")
                             .expect("failed to prepare statement");
@@ -80,7 +78,7 @@ impl DB {
                 }
                 MessageFromModelToDB::GSDisappeared(gss) => {
                     if !gss.is_empty() {
-                        info!("Got Message to DB from Model: {msg}");
+                        info!("Got Message from Model to DB: {msg}");
                         let mut prepared_statement = transaction
                             .prepare(
                                 "INSERT INTO gs_disappeared VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)",
