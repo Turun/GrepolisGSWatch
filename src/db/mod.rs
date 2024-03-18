@@ -8,8 +8,8 @@ use std::sync::mpsc::{Receiver, Sender};
 
 pub mod orm;
 
-use tracing::info;
-use tracing::{debug, error};
+use tracing::error;
+use tracing::{info, trace};
 
 pub struct DB {
     rx: Receiver<MessageFromModelToDB>,
@@ -46,7 +46,7 @@ impl DB {
                             )
                             .expect("failed to prepare statement");
                         for p in players {
-                            debug!("Inserting {p:?} into DB");
+                            trace!("Inserting {p:?} into DB");
                             let res = prepared_statement.execute((
                                 now,
                                 p.name.as_str(),
@@ -68,7 +68,7 @@ impl DB {
                             .prepare("INSERT INTO gs_appeared VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)")
                             .expect("failed to prepare statement");
                         for gs in gss {
-                            debug!("Inserting {gs:?} into DB.gs_appeared");
+                            trace!("Inserting {gs:?} into DB.gs_appeared");
                             let res = prepared_statement.execute((
                                 now,
                                 gs.name.as_str(),
@@ -91,7 +91,7 @@ impl DB {
                             .prepare("INSERT INTO gs_conquered VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)")
                             .expect("failed to prepare statement");
                         for gs in gss {
-                            debug!("Inserting {gs:?} into DB.gs_conquered");
+                            trace!("Inserting {gs:?} into DB.gs_conquered");
                             let res = prepared_statement.execute((
                                 now,
                                 gs.name.as_str(),

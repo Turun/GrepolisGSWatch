@@ -1,6 +1,6 @@
 use chrono::Utc;
 use std::{collections::HashSet, sync::mpsc::Sender, thread, time};
-use tracing::{error, info, trace, warn};
+use tracing::{error, info, warn};
 
 use crate::{
     db::orm::{OrmGS, OrmPlayer},
@@ -44,8 +44,6 @@ impl Model {
         loop {
             thread::sleep(time::Duration::from_secs(5 * 60));
             let state_new = Self::get_datatable_for_sure();
-            trace!("Address state_old: {:?}", &state_old as *const _);
-            trace!("Address state_new: {:?}", &state_new as *const _);
             let now = Utc::now();
             let mut tracked_any_updates = false;
 
@@ -107,10 +105,7 @@ impl Model {
                 info!("No changes this time");
             }
 
-            trace!("Address state_old: {:?}", &state_old as *const _);
-            trace!("Address state_new: {:?}", &state_new as *const _);
             state_old = state_new;
-            trace!("Address state_old: {:?}", &state_old as *const _);
         }
     }
 }
