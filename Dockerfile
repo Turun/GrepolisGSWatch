@@ -12,5 +12,5 @@ RUN apt-get install -y ca-certificates
 RUN rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 EXPOSE 10204
-COPY --from=builder /app/target/release/grepolis_diff_server /usr/bin/gregswatch
-CMD ["/usr/bin/gregswatch"]
+COPY --from=builder /app/target/release/grepolis_diff_server /gregswatch
+CMD ["/gregswatch"]
