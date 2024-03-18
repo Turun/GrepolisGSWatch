@@ -84,16 +84,14 @@ impl DB {
                         }
                     }
                 }
-                MessageFromModelToDB::GSDisappeared(gss) => {
+                MessageFromModelToDB::GSConquered(gss) => {
                     if !gss.is_empty() {
                         info!("Got Message from Model to DB: {msg}");
                         let mut prepared_statement = transaction
-                            .prepare(
-                                "INSERT INTO gs_disappeared VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-                            )
+                            .prepare("INSERT INTO gs_conquered VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)")
                             .expect("failed to prepare statement");
                         for gs in gss {
-                            debug!("Inserting {gs:?} into DB.gs_disappeared");
+                            debug!("Inserting {gs:?} into DB.gs_conquered");
                             let res = prepared_statement.execute((
                                 now,
                                 gs.name.as_str(),
@@ -152,7 +150,7 @@ impl DB {
             .expect("Failed to define the Database Schema");
         self.conn
             .execute(
-                "CREATE TABLE IF NOT EXISTS gs_disappeared (
+                "CREATE TABLE IF NOT EXISTS gs_conquered(
                     date TEXT NOT NULL,
                     name TEXT NOT NULL,
                     points INTEGER NOT NULL,
@@ -169,8 +167,8 @@ impl DB {
     fn send_update_to_webserver(&self) {
         let gs_conquered = self
             .conn
-            .prepare("SELECT * FROM gs_disappeared ORDER BY date LIMIT 200")
-            .expect("failed to prepare gs disappeared extraction statement")
+            .prepare("SELECT * FROM gs_conquered ORDER BY date LIMIT 200")
+            .expect("failed to prepare gs conquered extraction statement")
             .query([])
             .expect("Failed to query db for gs appeared")
             .mapped(|r| OrmGS::try_from(r))

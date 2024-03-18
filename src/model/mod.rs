@@ -76,11 +76,11 @@ impl Model {
             }
 
             // Determine which GS are no longer present
-            let mut gs_disappeared = Vec::new();
+            let mut gs_conquered = Vec::new();
             for gso in &gs_old {
                 let has_match = gs_new.iter().any(|gs| gs.id == gso.id);
                 if !has_match {
-                    gs_disappeared.push(OrmGS::from((
+                    gs_conquered.push(OrmGS::from((
                         now,
                         *gso,
                         &state_old.players,
@@ -88,13 +88,13 @@ impl Model {
                     )));
                 }
             }
-            if !gs_disappeared.is_empty() {
+            if !gs_conquered.is_empty() {
                 tracked_any_updates = true;
                 let res = self
                     .tx
-                    .send(MessageFromModelToDB::GSDisappeared(gs_disappeared));
+                    .send(MessageFromModelToDB::GSConquered(gs_conquered));
                 if let Err(err) = res {
-                    error!("Failed to send list of disappeared GS to Database: {}", err);
+                    error!("Failed to send list of conquered GS to Database: {}", err);
                 }
             }
 

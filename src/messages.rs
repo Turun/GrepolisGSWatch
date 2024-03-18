@@ -8,7 +8,7 @@ use crate::{
 };
 
 pub enum MessageFromModelToDB {
-    GSDisappeared(Vec<OrmGS>),
+    GSConquered(Vec<OrmGS>),
     GSAppeared(Vec<OrmGS>),
     PlayersDisappeared(Vec<OrmPlayer>),
 }
@@ -16,8 +16,8 @@ pub enum MessageFromModelToDB {
 impl fmt::Display for MessageFromModelToDB {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MessageFromModelToDB::GSDisappeared(list) => {
-                write!(f, "GSDisappeared(len={})", list.len())
+            MessageFromModelToDB::GSConquered(list) => {
+                write!(f, "GSConquered(len={})", list.len())
             }
             MessageFromModelToDB::GSAppeared(list) => {
                 write!(f, "GSAppeared(len={})", list.len())
