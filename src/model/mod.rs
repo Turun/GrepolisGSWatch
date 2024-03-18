@@ -1,5 +1,5 @@
 use chrono::Utc;
-use std::{sync::mpsc::Sender, thread, time};
+use std::{collections::HashSet, sync::mpsc::Sender, thread, time};
 use tracing::{error, info, warn};
 
 use crate::{
@@ -51,22 +51,16 @@ impl Model {
                 continue;
             }
 
-            let gs_new = state_new.get_ghost_towns();
-            let gs_old = state_old.get_ghost_towns();
+            let gs_ids_new = state_new.get_ghost_town_ids();
+            let gs_ids_old = state_old.get_ghost_town_ids();
 
-            // Determine which GS are new
-            let mut gs_appeared = Vec::new();
-            for gsn in &gs_new {
-                let has_a_match = gs_old.iter().any(|gs| gs.id == gsn.id);
-                if !has_a_match {
-                    gs_appeared.push(OrmGS::from((
-                        now,
-                        *gsn,
-                        &state_new.players,
-                        &state_new.alliances,
-                    )));
-                }
-            }
+            let diff_appeared = gs_ids_new.difference(&gs_ids_old); // basically new - old
+            let diff_conquered = gs_ids_old.difference(&gs_ids_new); // basically old - new
+
+            let gs_appeared: Vec<_> = diff_appeared
+                .filter_map(|id| state_old.towns.get(id))
+                .map(|town| OrmGS::from((now, town, &state_old.players, &state_old.alliances)))
+                .collect();
             if !gs_appeared.is_empty() {
                 tracked_any_updates = true;
                 let res = self.tx.send(MessageFromModelToDB::GSAppeared(gs_appeared));
@@ -75,19 +69,10 @@ impl Model {
                 }
             }
 
-            // Determine which GS are no longer present
-            let mut gs_conquered = Vec::new();
-            for gso in &gs_old {
-                let has_match = gs_new.iter().any(|gs| gs.id == gso.id);
-                if !has_match {
-                    gs_conquered.push(OrmGS::from((
-                        now,
-                        *gso,
-                        &state_old.players,
-                        &state_old.alliances,
-                    )));
-                }
-            }
+            let gs_conquered: Vec<_> = diff_conquered
+                .filter_map(|id| state_new.towns.get(id))
+                .map(|town| OrmGS::from((now, town, &state_new.players, &state_new.alliances)))
+                .collect();
             if !gs_conquered.is_empty() {
                 tracked_any_updates = true;
                 let res = self
@@ -99,13 +84,14 @@ impl Model {
             }
 
             // Determine which player no longer exists
-            let mut players_disappeared = Vec::new();
-            for (ido, po) in &state_old.players {
-                let has_match = state_new.players.iter().any(|(idn, _)| ido == idn);
-                if !has_match {
-                    players_disappeared.push(OrmPlayer::from((now, po, &state_old.alliances)));
-                }
-            }
+            let player_ids_old: HashSet<_> = state_old.players.keys().collect();
+            let player_ids_new: HashSet<_> = state_new.players.keys().collect();
+
+            let players_disappeared: Vec<_> = player_ids_old
+                .difference(&player_ids_new)
+                .filter_map(|id| state_old.players.get(id))
+                .map(|player| OrmPlayer::from((now, player, &state_old.alliances)))
+                .collect();
             if !players_disappeared.is_empty() {
                 tracked_any_updates = true;
                 let res = self.tx.send(MessageFromModelToDB::PlayersDisappeared(

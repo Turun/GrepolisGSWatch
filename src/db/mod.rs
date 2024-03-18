@@ -38,8 +38,8 @@ impl DB {
             let transaction = self.conn.transaction().expect("Failed to open transaction");
             match &msg {
                 MessageFromModelToDB::PlayersDisappeared(players) => {
+                    info!("Got Message from Model to DB: {msg}");
                     if !players.is_empty() {
-                        info!("Got Message from Model to DB: {msg}");
                         let mut prepared_statement = transaction
                             .prepare(
                                 "INSERT INTO player_disappeared VALUES(?1, ?2, ?3, ?4, ?5, ?6)",
@@ -62,8 +62,8 @@ impl DB {
                     }
                 }
                 MessageFromModelToDB::GSAppeared(gss) => {
+                    info!("Got Message from Model to DB: {msg}");
                     if !gss.is_empty() {
-                        info!("Got Message from Model to DB: {msg}");
                         let mut prepared_statement = transaction
                             .prepare("INSERT INTO gs_appeared VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)")
                             .expect("failed to prepare statement");
@@ -85,8 +85,8 @@ impl DB {
                     }
                 }
                 MessageFromModelToDB::GSConquered(gss) => {
+                    info!("Got Message from Model to DB: {msg}");
                     if !gss.is_empty() {
-                        info!("Got Message from Model to DB: {msg}");
                         let mut prepared_statement = transaction
                             .prepare("INSERT INTO gs_conquered VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)")
                             .expect("failed to prepare statement");
@@ -143,7 +143,7 @@ impl DB {
                     x REAL NOT NULL,
                     y REAL NOT NULL,
                     player TEXT NOT NULL,
-                    alliance TEXT NOT NULL
+                    alliance TEXT
                 );",
                 (),
             )

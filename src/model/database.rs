@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Offset {
@@ -75,9 +75,11 @@ pub struct DataTable {
 }
 
 impl DataTable {
-    pub fn get_ghost_towns(&self) -> Vec<&Town> {
-        self.towns.values()
+    pub fn get_ghost_town_ids(&self) -> HashSet<u32> {
+        self.towns
+            .values()
             .filter(|t| t.player_id.is_none())
+            .map(|t| t.id)
             .collect()
     }
 }
