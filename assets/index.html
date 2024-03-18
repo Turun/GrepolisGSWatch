@@ -1,0 +1,162 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <title>List of new Ghosttowns on de99</title>
+  <link rel="stylesheet" href="style.css" type="text/css">
+  <style>
+    .outer {
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      max-width: 60vw;
+      margin: auto;
+      font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .column1 .column3. column5 {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .column2 .column4 {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    td {
+      padding-left: 1rem;
+      padding-right: 1rem;
+      padding-bottom: 0.75rem;
+      padding-top: 0.75rem;
+      text-align: center;
+    }
+
+    td>div {
+      margin: auto;
+      display: flex;
+    }
+
+    .circle {
+      display: block;
+      padding: 1ex;
+      border-radius: 2ex;
+      margin: auto;
+    }
+
+    .red {
+      background-color: #ef4444;
+      // position: relative;
+    }
+
+    .green {
+      background-color: #22c55e;
+    }
+
+    .anchor {
+      position: relative;
+    }
+
+    .red::before {
+      content: attr(class);
+      visibility: hidden;
+      opacity: 0;
+      width: max-content;
+      background-color: black;
+      color: #fff;
+      text-align: center;
+      border-radius: 5px;
+      padding: 5px;
+      transition: opacity 1s ease-in-out;
+
+      position: absolute;
+      z-index: 1;
+      left: 0;
+      top: 110%;
+
+    }
+
+    .red:hover::before {
+      opacity: 1;
+      visibility: visible;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="outer">
+    <div class="anchor"></div>
+    <table class="table">
+      <tbody>
+        <tr>
+          <td class="column1">
+            <div>
+              <span class="circle green">City Name</span>
+            </div>
+          </td>
+          <td class="column2">00:00:00</td>
+          <td class="column3">
+            <div>
+              <span class="circle red">City Name</span>
+            </div>
+          </td>
+          <td class="column4">01:30:00</td>
+          <td class="column5">
+            <div>
+              <span class="circle green">Other Name</span>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td class="column1">
+            <span class="circle green"></span>
+          </td>
+          <td class="column2">00:10:00</td>
+          <td class="column3">
+            <span class="circle red"></span>
+          </td>
+          <td class="column4">00:45:00</td>
+          <td class="column5">
+            <span class="circle green"></span>
+          </td>
+        </tr>
+        <tr>
+          <td class="column1">
+            <span class="circle green"></span>
+          </td>
+          <td class="column2">00:20:00</td>
+          <td class="column3">
+            <span class="circle red"></span>
+          </td>
+          <td class="column4">01:00:00</td>
+          <td class="column5">
+            <span class="circle green"></span>
+          </td>
+        </tr>
+        <tr>
+          <td class="column1">
+            <span class="circle green"></span>
+          </td>
+          <td class="column2">00:30:00</td>
+          <td class="column3">
+            <span class="circle red"></span>
+          </td>
+          <td class="column4">01:15:00</td>
+          <td class="column5">
+            <span class="circle green"></span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+
+</html>
