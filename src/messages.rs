@@ -1,11 +1,9 @@
 //! A file to collect the messages that are sent across the channels
 
 use core::fmt;
-use std::sync::Arc;
 
 use crate::{
     db::orm::{OrmGS, OrmPlayer},
-    model::database::{Player, Town},
     web::CachedDBState,
 };
 

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::Deref, sync::Arc};
+use std::collections::HashMap;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Offset {
@@ -30,67 +30,56 @@ pub struct Alliance {
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Player<'a> {
+pub struct Player {
     pub id: u32,
     pub name: String,
-    pub alliance: Option<(u32, &'a Alliance)>, // link player.alliance_id == alliance.id
+    pub alliance_id: Option<u32>, // link player.alliance_id == alliance.id
     pub points: u32,
     pub rank: u16,
     pub towns: u16,
 }
 
 #[derive(Clone, PartialEq)]
-pub struct Town<'a> {
+pub struct Town {
     pub id: u32,
     pub name: String,
     pub points: u16,
-    pub player: Option<(u32, &'a Player<'a>)>, // link town.player_id == player.id
-    pub island: (u16, u16, &'a Island),        // link town.x = island.x && town.y == island.y
-    pub offset: (u8, &'a Offset), // link town.slot_number = offset.slot_number && offset.type == island.type
+    pub player_id: Option<u32>, // link town.player_id == player.id
+    pub island_xy: (u16, u16),  // link town.x = island.x && town.y == island.y
+    pub offset_slotnumber: u8, // link town.slot_number = offset.slot_number && offset.type == island.type
     pub actual_x: f32,
     pub actual_y: f32, // computed from the linked island and offset
 }
 
-impl<'a> Eq for Town<'a> {}
-impl<'a> std::hash::Hash for Town<'a> {
+impl Eq for Town {}
+impl std::hash::Hash for Town {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.id.hash(state);
         self.name.hash(state);
         self.points.hash(state);
-        self.player.hash(state);
-        self.island.hash(state);
-        self.offset.hash(state);
+        self.player_id.hash(state);
+        self.island_xy.hash(state);
+        self.offset_slotnumber.hash(state);
         self.actual_x.to_bits().hash(state);
         self.actual_y.to_bits().hash(state);
     }
 }
 
 #[derive(PartialEq)]
-pub struct DataTable<'a> {
+pub struct DataTable {
     pub offsets: HashMap<u8, Offset>,
     pub islands: HashMap<(u16, u16), Island>,
     pub alliances: HashMap<u32, Alliance>,
-    pub players: HashMap<u32, Player<'a>>,
-    pub towns: HashMap<u32, Town<'a>>,
+    pub players: HashMap<u32, Player>,
+    pub towns: HashMap<u32, Town>,
 }
 
-impl<'a> DataTable<'a> {
-    /// create a new `DataTable` with no content
-    pub fn empty() -> Self {
-        Self {
-            offsets: HashMap::new(),
-            islands: HashMap::new(),
-            alliances: HashMap::new(),
-            players: HashMap::new(),
-            towns: HashMap::new(),
-        }
-    }
-
-    pub fn get_ghost_towns(&'a self) -> Vec<&'a Town<'a>> {
+impl DataTable {
+    pub fn get_ghost_towns(&self) -> Vec<&Town> {
         self.towns
             .iter()
             .map(|(_, t)| t)
-            .filter(|t| t.player.is_none())
+            .filter(|t| t.player_id.is_none())
             .collect()
     }
 }

@@ -25,8 +25,8 @@ impl Model {
     fn get_datatable_for_sure() -> DataTable {
         loop {
             // TODO do this for more servers
-            let dt = DataTable::create_for_world("de99");
-            match dt {
+            let res = DataTable::create_for_world("de99");
+            match res {
                 Ok(dt) => {
                     info!("Successfully loaded a new DataTable");
                     break dt;
@@ -43,6 +43,7 @@ impl Model {
         let mut state_old = Self::get_datatable_for_sure();
         loop {
             thread::sleep(time::Duration::from_secs(5 * 60));
+            let now = Utc::now();
 
             let state_new = Self::get_datatable_for_sure();
             if state_new == state_old {
@@ -57,7 +58,12 @@ impl Model {
             for gsn in &gs_new {
                 let has_a_match = gs_old.iter().any(|gs| gs.id == gsn.id);
                 if !has_a_match {
-                    gs_appeared.push(OrmGS::from((now, *gsn)));
+                    gs_appeared.push(OrmGS::from((
+                        now,
+                        *gsn,
+                        &state_new.players,
+                        &state_new.alliances,
+                    )));
                 }
             }
             let res = self.tx.send(MessageFromModelToDB::GSAppeared(gs_appeared));
@@ -70,7 +76,12 @@ impl Model {
             for gso in &gs_old {
                 let has_match = gs_new.iter().any(|gs| gs.id == gso.id);
                 if !has_match {
-                    gs_disappeared.push(OrmGS::from((now, *gso)));
+                    gs_disappeared.push(OrmGS::from((
+                        now,
+                        *gso,
+                        &state_old.players,
+                        &state_old.alliances,
+                    )));
                 }
             }
             let res = self
@@ -85,7 +96,7 @@ impl Model {
             for (ido, po) in &state_old.players {
                 let has_match = state_new.players.iter().any(|(idn, _)| ido == idn);
                 if !has_match {
-                    players_disappeared.push(OrmPlayer::from((now, po)));
+                    players_disappeared.push(OrmPlayer::from((now, po, &state_old.alliances)));
                 }
             }
             let res = self.tx.send(MessageFromModelToDB::PlayersDisappeared(

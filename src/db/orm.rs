@@ -1,7 +1,9 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use rusqlite::Row;
 
-use crate::model::database::{Player, Town};
+use crate::model::database::{Alliance, Player, Town};
 
 #[allow(clippy::module_name_repetitions)]
 pub struct OrmGS {
@@ -14,20 +16,36 @@ pub struct OrmGS {
     pub alliance_name: Option<String>,
 }
 
-impl<'a> From<(DateTime<Utc>, &'a Town<'a>)> for OrmGS {
-    fn from((now, town): (DateTime<Utc>, &'a Town)) -> Self {
+impl<'a>
+    From<(
+        DateTime<Utc>,
+        &Town,
+        &HashMap<u32, Player>,
+        &HashMap<u32, Alliance>,
+    )> for OrmGS
+{
+    fn from(
+        (now, town, players, alliances): (
+            DateTime<Utc>,
+            &Town,
+            &HashMap<u32, Player>,
+            &HashMap<u32, Alliance>,
+        ),
+    ) -> Self {
+        let opt_player = town.player_id.map(|id| players.get(&id)).flatten();
         Self {
             date: now,
             name: town.name.clone(),
             points: town.points,
             x: town.actual_x,
             y: town.actual_y,
-            player_name: town.player.map(|(_, p)| p.name.clone()),
-            alliance_name: town
-                .player
-                .map(|(_, p)| p.alliance)
+            player_name: opt_player.map(|p| p.name.clone()),
+            alliance_name: opt_player
+                .map(|p| p.alliance_id)
                 .flatten()
-                .map(|(_, a)| a.name.clone()),
+                .map(|id| alliances.get(&id))
+                .flatten()
+                .map(|a| a.name.clone()),
         }
     }
 }
@@ -58,15 +76,19 @@ pub struct OrmPlayer {
     pub alliance: Option<String>,
 }
 
-impl<'a> From<(DateTime<Utc>, &'a Player<'a>)> for OrmPlayer {
-    fn from((now, player): (DateTime<Utc>, &'a Player)) -> Self {
+impl<'a> From<(DateTime<Utc>, &Player, &HashMap<u32, Alliance>)> for OrmPlayer {
+    fn from((now, player, alliances): (DateTime<Utc>, &Player, &HashMap<u32, Alliance>)) -> Self {
         Self {
             date: now,
             name: player.name.clone(),
             towns: player.towns,
             points: player.points,
             rank: player.rank,
-            alliance: player.alliance.map(|(_, a)| a.name.clone()),
+            alliance: player
+                .alliance_id
+                .map(|id| alliances.get(&id))
+                .flatten()
+                .map(|a| a.name.clone()),
         }
     }
 }

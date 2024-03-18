@@ -2,8 +2,7 @@ use super::database::{Alliance, DataTable, Island, Offset, Player, Town};
 use super::offset_data;
 use anyhow::Context;
 
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
+use std::collections::HashMap;
 
 use tracing::info;
 
@@ -31,9 +30,9 @@ fn make_client() -> reqwest::blocking::Client {
         .unwrap()
 }
 
-impl<'a> DataTable<'a> {
+impl DataTable {
     /// fetches data from the api and saves the processed data to self
-    pub fn create_for_world(&'a mut self, server_id: &str) -> anyhow::Result<()> {
+    pub fn create_for_world(server_id: &str) -> anyhow::Result<Self> {
         let reqwest_client = make_client();
 
         let thread_client = reqwest_client.clone();
@@ -69,33 +68,39 @@ impl<'a> DataTable<'a> {
             )
         });
 
-        self.offsets = Self::make_offsets();
+        let offsets = Self::make_offsets();
 
         let data_alliances = handle_data_alliances
             .join()
             .expect("Failed to join AllianceData fetching thread")
             .context("Failed to download alliance data")?;
-        self.alliances = Self::parse_alliances(&data_alliances)?;
+        let alliances = Self::parse_alliances(&data_alliances)?;
 
         let data_islands = handle_data_islands
             .join()
             .expect("Failed to join islandData fetching thread")
             .context("Failed to download island data")?;
-        self.islands = Self::parse_islands(&data_islands)?;
+        let islands = Self::parse_islands(&data_islands)?;
 
         let data_players = handle_data_players
             .join()
             .expect("Failed to join PlayerData fetching thread")
             .context("Failed to download player data")?;
-        self.players = Self::parse_players(&data_players, &self.alliances)?;
+        let players = Self::parse_players(&data_players)?;
 
         let data_towns = handle_data_towns
             .join()
             .expect("Failed to join TownData fetching thread")
             .context("Failed to download town data")?;
-        self.towns = Self::parse_towns(&data_towns, &self.players, &self.islands, &self.offsets)?;
+        let towns = Self::parse_towns(&data_towns, &offsets)?;
 
-        return Ok(());
+        return Ok(Self {
+            offsets,
+            islands,
+            alliances,
+            players,
+            towns,
+        });
     }
 
     fn make_offsets() -> HashMap<u8, Offset> {
@@ -230,10 +235,7 @@ impl<'a> DataTable<'a> {
         return Ok(re);
     }
 
-    fn parse_players<'b>(
-        data: &str,
-        alliances: &'b HashMap<u32, Alliance>,
-    ) -> anyhow::Result<HashMap<u32, Player<'b>>> {
+    fn parse_players(data: &str) -> anyhow::Result<HashMap<u32, Player>> {
         let lines: Vec<&str> = data.lines().collect();
         let mut re = HashMap::with_capacity(lines.len());
         for line in lines {
@@ -281,23 +283,12 @@ impl<'a> DataTable<'a> {
                 .parse()
                 .with_context(|| format!("No player towns in {line} that can be parsed as int"))?;
 
-            let opt_alliance_tuple = if let Some(alliance_id) = opt_alliance_id {
-                let opt_alliance = alliances.get(&alliance_id);
-                if let Some(alliance) = opt_alliance {
-                    Some((alliance_id, alliance))
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
-
             re.insert(
                 id,
                 Player {
                     id,
                     name,
-                    alliance: opt_alliance_tuple,
+                    alliance_id: opt_alliance_id,
                     points,
                     rank,
                     towns,
@@ -308,12 +299,10 @@ impl<'a> DataTable<'a> {
     }
 
     #[allow(clippy::cast_lossless)]
-    fn parse_towns<'c>(
+    fn parse_towns(
         data: &str,
-        players: &'c HashMap<u32, Player>,
-        islands: &'c HashMap<(u16, u16), Island>,
-        offsets: &'c HashMap<u8, Offset>,
-    ) -> anyhow::Result<HashMap<u32, Town<'c>>> {
+        offsets: &HashMap<u8, Offset>,
+    ) -> anyhow::Result<HashMap<u32, Town>> {
         let lines: Vec<&str> = data.lines().collect();
         let mut re = HashMap::with_capacity(lines.len());
         for line in lines {
@@ -367,21 +356,6 @@ impl<'a> DataTable<'a> {
                 .parse()
                 .with_context(|| format!("No town points in {line} that can be parsed as int"))?;
 
-            // get actual player from the player id
-            let opt_player_tuple = if let Some(player_id) = opt_player_id {
-                let opt_player = players.get(&player_id);
-                if let Some(alliance) = opt_player {
-                    Some((player_id, alliance))
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
-
-            // get actual island from x and y
-            let island_tuple = (x, y, islands.get(&(x, y)).unwrap());
-
             // get the offset from the offset list from slot_number
             let offset_tuple = (slot_number, offsets.get(&slot_number).unwrap());
 
@@ -395,9 +369,9 @@ impl<'a> DataTable<'a> {
                     id,
                     name,
                     points,
-                    player: opt_player_tuple,
-                    island: island_tuple,
-                    offset: offset_tuple,
+                    player_id: opt_player_id,
+                    island_xy: (x, y),
+                    offset_slotnumber: slot_number,
                     actual_x,
                     actual_y,
                 },
