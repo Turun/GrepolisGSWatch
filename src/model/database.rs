@@ -76,9 +76,7 @@ pub struct DataTable {
 
 impl DataTable {
     pub fn get_ghost_towns(&self) -> Vec<&Town> {
-        self.towns
-            .iter()
-            .map(|(_, t)| t)
+        self.towns.values()
             .filter(|t| t.player_id.is_none())
             .collect()
     }

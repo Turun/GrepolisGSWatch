@@ -52,7 +52,7 @@ impl DB {
                                 p.towns,
                                 p.points,
                                 p.rank,
-                                p.alliance.as_ref().map(|s| s.as_str()),
+                                p.alliance.as_deref(),
                             ));
                         }
                     }
@@ -70,8 +70,8 @@ impl DB {
                                 gs.points,
                                 gs.x,
                                 gs.y,
-                                gs.player_name.as_ref().map(|s| s.as_str()),
-                                gs.alliance_name.as_ref().map(|s| s.as_str()),
+                                gs.player_name.as_deref(),
+                                gs.alliance_name.as_deref(),
                             ));
                         }
                     }
@@ -91,8 +91,8 @@ impl DB {
                                 gs.points,
                                 gs.x,
                                 gs.y,
-                                gs.player_name.as_ref().map(|s| s.as_str()),
-                                gs.alliance_name.as_ref().map(|s| s.as_str()),
+                                gs.player_name.as_deref(),
+                                gs.alliance_name.as_deref(),
                             ));
                         }
                     }

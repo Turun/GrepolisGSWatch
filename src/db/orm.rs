@@ -16,7 +16,7 @@ pub struct OrmGS {
     pub alliance_name: Option<String>,
 }
 
-impl<'a>
+impl
     From<(
         DateTime<Utc>,
         &Town,
@@ -32,7 +32,7 @@ impl<'a>
             &HashMap<u32, Alliance>,
         ),
     ) -> Self {
-        let opt_player = town.player_id.map(|id| players.get(&id)).flatten();
+        let opt_player = town.player_id.and_then(|id| players.get(&id));
         Self {
             date: now,
             name: town.name.clone(),
@@ -41,10 +41,8 @@ impl<'a>
             y: town.actual_y,
             player_name: opt_player.map(|p| p.name.clone()),
             alliance_name: opt_player
-                .map(|p| p.alliance_id)
-                .flatten()
-                .map(|id| alliances.get(&id))
-                .flatten()
+                .and_then(|p| p.alliance_id)
+                .and_then(|id| alliances.get(&id))
                 .map(|a| a.name.clone()),
         }
     }
@@ -76,7 +74,7 @@ pub struct OrmPlayer {
     pub alliance: Option<String>,
 }
 
-impl<'a> From<(DateTime<Utc>, &Player, &HashMap<u32, Alliance>)> for OrmPlayer {
+impl From<(DateTime<Utc>, &Player, &HashMap<u32, Alliance>)> for OrmPlayer {
     fn from((now, player, alliances): (DateTime<Utc>, &Player, &HashMap<u32, Alliance>)) -> Self {
         Self {
             date: now,
@@ -86,8 +84,7 @@ impl<'a> From<(DateTime<Utc>, &Player, &HashMap<u32, Alliance>)> for OrmPlayer {
             rank: player.rank,
             alliance: player
                 .alliance_id
-                .map(|id| alliances.get(&id))
-                .flatten()
+                .and_then(|id| alliances.get(&id))
                 .map(|a| a.name.clone()),
         }
     }
