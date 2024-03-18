@@ -24,7 +24,7 @@ fn main() {
         .with_default_directive(LevelFilter::WARN.into())
         .from_env()
         .expect("failed to create logging filter")
-        .add_directive("grepolis_diff_server=debug".parse().unwrap());
+        .add_directive("grepolis_diff_server=trace".parse().unwrap());
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .compact()
