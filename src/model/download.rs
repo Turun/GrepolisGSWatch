@@ -1,6 +1,6 @@
 use super::database::{Alliance, DataTable, Island, Offset, Player, Town};
 use super::offset_data;
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 
 use std::collections::HashMap;
 
@@ -94,13 +94,55 @@ impl DataTable {
             .context("Failed to download town data")?;
         let towns = Self::parse_towns(&data_towns, &offsets)?;
 
-        return Ok(Self {
+        let re = Self {
             offsets,
             islands,
             alliances,
             players,
             towns,
-        });
+        };
+
+        // abort if not all references are valid
+        if !re.all_references_valid() {
+            return Err(anyhow!("Invalid references in API response"));
+        }
+
+        return Ok(re);
+    }
+
+    /// the response from the server is basically a db dump. We parse the response as is and
+    /// just store the references in the Town/Player/etc structs. But the API sometimes returns
+    /// mismatched tables (mismatched in time). So it may be that the references that TownA has into
+    /// the Player Table is no longer valid.  Therefore this function exists. it checks if such a
+    /// case exists (returns false) or if all references are valid (returns true)
+    fn all_references_valid(&self) -> bool {
+        // players have references into the alliance struct
+        for player in self.players.values() {
+            if let Some(alliance_id) = player.alliance_id {
+                if !self.alliances.contains_key(&alliance_id) {
+                    return false;
+                }
+            }
+        }
+        // towns have references to players, islands and slot numbers.
+        for town in self.towns.values() {
+            if let Some(player_id) = town.player_id {
+                if !self.players.contains_key(&player_id) {
+                    return false;
+                }
+            }
+
+            // the island and offset slotnumber references are likely never ever non matching. I'll
+            // check anyway. Because then we are guaranteed to have valid references.
+            if !self.islands.contains_key(&town.island_xy) {
+                return false;
+            }
+            if !self.offsets.contains_key(&town.offset_slotnumber) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     fn make_offsets() -> HashMap<u8, Offset> {
