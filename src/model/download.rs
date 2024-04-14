@@ -399,11 +399,11 @@ impl DataTable {
                 .with_context(|| format!("No town points in {line} that can be parsed as int"))?;
 
             // get the offset from the offset list from slot_number
-            let offset_tuple = (slot_number, offsets.get(&slot_number).unwrap());
+            let offset = offsets.get(&slot_number).unwrap();
 
             // compute actual x
-            let actual_x = x as f32 + offset_tuple.1.x as f32 / 125f32;
-            let actual_y = y as f32 + offset_tuple.1.y as f32 / 125f32;
+            let actual_x = x as f32 + offset.x as f32 / 125f32;
+            let actual_y = y as f32 + offset.y as f32 / 125f32;
 
             re.insert(
                 id,
