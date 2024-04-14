@@ -42,7 +42,7 @@ impl Model {
     pub fn start(self) {
         let mut state_old = Self::get_datatable_for_sure();
         loop {
-            thread::sleep(time::Duration::from_secs(5 * 60));
+            thread::sleep(time::Duration::from_secs(1 * 60 * 60)); // 1 hour
             let state_new = Self::get_datatable_for_sure();
             let now = Utc::now();
             let mut tracked_any_updates = false;
