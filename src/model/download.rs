@@ -95,6 +95,7 @@ impl DataTable {
         let towns = Self::parse_towns(&data_towns, &offsets)?;
 
         let re = Self {
+            loaded: Utc::now(),
             offsets,
             islands,
             alliances,

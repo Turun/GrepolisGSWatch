@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
+use chrono::{DateTime, Utc};
 pub struct Offset {
     pub typ: u8,
     pub x: u16,
@@ -67,6 +68,7 @@ impl std::hash::Hash for Town {
 
 #[derive(PartialEq)]
 pub struct DataTable {
+    pub loaded: DateTime<Utc>,
     pub offsets: HashMap<u8, Offset>,
     pub islands: HashMap<(u16, u16), Island>,
     pub alliances: HashMap<u32, Alliance>,
