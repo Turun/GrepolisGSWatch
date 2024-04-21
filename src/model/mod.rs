@@ -1,6 +1,9 @@
-use chrono::{Duration, Utc};
+use anyhow::Context;
+use chrono::Utc;
 use std::{collections::HashSet, sync::mpsc::Sender, thread, time};
 use tracing::{error, info, warn};
+
+use postcard;
 
 use crate::{
     db::orm::{OrmGS, OrmPlayer},
@@ -22,6 +25,23 @@ impl Model {
         Self { tx }
     }
 
+    /// load the file `old_state.bin` from disk into a `DataTable`
+    fn load_state() -> anyhow::Result<DataTable> {
+        let bytes = std::fs::read("./state_old.bin")
+            .with_context(|| "Failed to read the old state from disk!")?;
+        let dt = postcard::from_bytes(&bytes).with_context(|| "Failed to parse the old state!")?;
+        return Ok(dt);
+    }
+
+    /// save the given `DataTable` to the file `old_state.bin` on disk
+    fn save_state(dt: &DataTable) -> anyhow::Result<()> {
+        let bytes = postcard::to_allocvec(dt)
+            .with_context(|| "failed to convert the Datatable to postcard format")?;
+        std::fs::write("./state_old.bin", bytes)
+            .with_context(|| "Failed to write the old state to disk")?;
+        return Ok(());
+    }
+
     fn get_datatable_for_sure() -> DataTable {
         loop {
             // TODO do this for more servers
@@ -40,7 +60,10 @@ impl Model {
     }
 
     pub fn start(self) {
-        let mut state_old = Self::get_datatable_for_sure();
+        let mut state_old = Self::load_state().unwrap_or_else(|err| {
+            error!("{:?}", err);
+            Self::get_datatable_for_sure()
+        });
         loop {
             // ensure we do not compare datatables that were fetched less than one hour apart from each other.
             let now = Utc::now();
@@ -129,6 +152,10 @@ impl Model {
             }
 
             state_old = state_new;
+            let res = Self::save_state(&state_old);
+            if let Err(err) = res {
+                error!("{:?}", err);
+            }
         }
     }
 }

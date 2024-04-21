@@ -11,10 +11,12 @@ reqwest = { version = "0.11.18", features=["gzip", "deflate", "blocking"] }
 axum = "0.6.20"
 form_urlencoded = "1.2.1"
 rusqlite = { version = "0.30.0", features = ["bundled", "chrono"] }
-chrono = "0.4.35"
+chrono = { version = "0.4.35", features = ["serde"] }
 tokio = { version = "1.36.0", features = ["rt-multi-thread"] }
 tracing = "0.1.40"
 tracing-subscriber = {version="0.3.18", features=["env-filter"]}
+serde = { version = "1.0.198", features = ["derive"] }
+postcard = { version = "1.0.8", features = ["use-std", "alloc"] }
 
 
 
