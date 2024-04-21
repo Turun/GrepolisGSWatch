@@ -20,5 +20,5 @@ RUN apt-get update
 RUN apt-get install -y ca-certificates 
 RUN rm -rf /var/lib/apt/lists/*
 EXPOSE 10204
-COPY --from=application /app/target/release/grepolis_diff_server /gregswatch
+COPY --from=application /app/target/release/gregswatch /gregswatch
 CMD ["/gregswatch"]
