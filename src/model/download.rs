@@ -1,22 +1,29 @@
 use super::database::{Alliance, DataTable, Island, Offset, Player, Town};
 use super::offset_data;
 use anyhow::{anyhow, Context};
+use chrono::Utc;
 
 use std::collections::HashMap;
 
 use tracing::info;
 
-fn download_generic<U>(
+fn download_generic(
     client: &reqwest::blocking::Client,
-    url: U,
-) -> std::result::Result<String, reqwest::Error>
-where
-    U: reqwest::IntoUrl + std::fmt::Display,
-{
-    let url_text = format!("{url}");
-    let result = client.get(url).send()?;
-    info!("Got status {} for url {}", result.status(), url_text);
+    url: String,
+) -> std::result::Result<String, reqwest::Error> {
+    let result = client.get(url.clone()).send()?;
+    info!("Got status {} for url {url}", result.status());
     let text = result.text()?;
+
+    // // for debugging
+    // let now = chrono::Utc::now();
+    // let identifyer = url.as_str().split('/').last().unwrap();
+    // if let Err(err) = fs::write(format!("{identifyer}-{}", now.timestamp()), &text) {
+    //     error!(
+    //         "Failed to save api response to file {identifyer}-{}: {err:?}",
+    //         now.timestamp()
+    //     );
+    // }
 
     Ok(text)
 }
@@ -95,6 +102,7 @@ impl DataTable {
         let towns = Self::parse_towns(&data_towns, &offsets)?;
 
         let re = Self {
+            loaded: Utc::now(),
             offsets,
             islands,
             alliances,

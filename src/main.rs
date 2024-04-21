@@ -19,6 +19,10 @@ mod model;
 mod web;
 
 fn main() {
+    Model::test();
+    println!("done");
+    loop {}
+
     // setup logging
     let filter = EnvFilter::builder()
         .with_default_directive(LevelFilter::WARN.into())

@@ -1,6 +1,9 @@
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+use chrono::{DateTime, Utc};
+
+#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Offset {
     pub typ: u8,
     pub x: u16,
@@ -8,7 +11,7 @@ pub struct Offset {
     pub slot_number: u8,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Island {
     pub id: u32,
     pub x: u16,
@@ -19,7 +22,7 @@ pub struct Island {
     pub ressource_minus: String,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Alliance {
     pub id: u32,
     pub name: String,
@@ -29,7 +32,7 @@ pub struct Alliance {
     pub rank: u16,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Player {
     pub id: u32,
     pub name: String,
@@ -39,7 +42,7 @@ pub struct Player {
     pub towns: u16,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 pub struct Town {
     pub id: u32,
     pub name: String,
@@ -65,8 +68,9 @@ impl std::hash::Hash for Town {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Serialize, Deserialize)]
 pub struct DataTable {
+    pub loaded: DateTime<Utc>,
     pub offsets: HashMap<u8, Offset>,
     pub islands: HashMap<(u16, u16), Island>,
     pub alliances: HashMap<u32, Alliance>,

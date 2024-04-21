@@ -1,6 +1,10 @@
-use chrono::Utc;
+use chrono::{Duration, Utc};
 use std::{collections::HashSet, sync::mpsc::Sender, thread, time};
 use tracing::{error, info, warn};
+
+use postcard;
+use rmp_serde;
+use serde_pickle;
 
 use crate::{
     db::orm::{OrmGS, OrmPlayer},
@@ -18,9 +22,57 @@ pub struct Model {
 }
 
 impl Model {
+    pub fn test() {
+        let dt = Self::get_datatable_for_sure();
+
+        // serde message pack
+        let start = time::Instant::now();
+        let output_message_pack = rmp_serde::to_vec(&dt).unwrap();
+        println!(
+            "message_pack: {} in {:?}",
+            output_message_pack.len(),
+            start.elapsed()
+        );
+        let start = time::Instant::now();
+        let input_message_pack: DataTable = rmp_serde::from_slice(&output_message_pack).unwrap();
+        println!("message_pack in {:?}", start.elapsed());
+
+        // serde Postcard
+        let start = time::Instant::now();
+        let output_postcard = postcard::to_allocvec(&dt).unwrap();
+        println!(
+            "Postcard: {} in {:?}",
+            output_postcard.len(),
+            start.elapsed()
+        );
+        let start = time::Instant::now();
+        let input_postcard: DataTable = postcard::from_bytes(&output_postcard).unwrap();
+        println!("Postcard in {:?}", start.elapsed());
+
+        println!("{}", input_postcard.loaded);
+        println!("{}", input_message_pack.loaded);
+    }
+
     pub fn new(tx: Sender<MessageFromModelToDB>) -> Self {
         Self { tx }
     }
+
+    /// load the file `old_state.bin` from disk into a `DataTable`
+    fn load_state() -> Option<DataTable> {
+        let res_bytes = std::fs::read("./old_state.bin");
+        match res_bytes {
+            Ok(bytes) => {
+                return None;
+            }
+            Err(err) => {
+                warn!("failed to read old state from disk! {err}");
+                return None;
+            }
+        }
+    }
+
+    /// save the given `DataTable` to the file `old_state.bin` on disk
+    fn save_state(dt: DataTable) {}
 
     fn get_datatable_for_sure() -> DataTable {
         loop {
@@ -42,9 +94,18 @@ impl Model {
     pub fn start(self) {
         let mut state_old = Self::get_datatable_for_sure();
         loop {
-            thread::sleep(time::Duration::from_secs(1 * 60 * 60)); // 1 hour
-            let state_new = Self::get_datatable_for_sure();
+            // ensure we do not compare datatables that were fetched less than one hour apart from each other.
             let now = Utc::now();
+            let delta = now - state_old.loaded;
+            let min_sleep = chrono::Duration::try_hours(1).unwrap();
+            thread::sleep(
+                delta
+                    .min(min_sleep)
+                    .to_std()
+                    .unwrap_or(time::Duration::from_secs(1 * 60 * 60)),
+            );
+
+            let state_new = Self::get_datatable_for_sure();
             let mut tracked_any_updates = false;
 
             let gs_ids_new = state_new.get_ghost_town_ids();
@@ -55,7 +116,14 @@ impl Model {
 
             let gs_appeared: Vec<_> = diff_appeared
                 .filter_map(|id| state_old.towns.get(id))
-                .map(|town| OrmGS::from((now, town, &state_old.players, &state_old.alliances)))
+                .map(|town| {
+                    OrmGS::from((
+                        state_new.loaded,
+                        town,
+                        &state_old.players,
+                        &state_old.alliances,
+                    ))
+                })
                 .collect();
             if !gs_appeared.is_empty() {
                 tracked_any_updates = true;
@@ -67,7 +135,14 @@ impl Model {
 
             let gs_conquered: Vec<_> = diff_conquered
                 .filter_map(|id| state_new.towns.get(id))
-                .map(|town| OrmGS::from((now, town, &state_new.players, &state_new.alliances)))
+                .map(|town| {
+                    OrmGS::from((
+                        state_new.loaded,
+                        town,
+                        &state_new.players,
+                        &state_new.alliances,
+                    ))
+                })
                 .collect();
             if !gs_conquered.is_empty() {
                 tracked_any_updates = true;
@@ -86,7 +161,7 @@ impl Model {
             let players_disappeared: Vec<_> = player_ids_old
                 .difference(&player_ids_new)
                 .filter_map(|id| state_old.players.get(id))
-                .map(|player| OrmPlayer::from((now, player, &state_old.alliances)))
+                .map(|player| OrmPlayer::from((state_new.loaded, player, &state_old.alliances)))
                 .collect();
             if !players_disappeared.is_empty() {
                 tracked_any_updates = true;
