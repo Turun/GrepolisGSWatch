@@ -1,4 +1,4 @@
-FROM rust:1.67 as dependencies
+FROM rust:1.77 as dependencies
 WORKDIR /app
 COPY Cargo.toml .
 COPY Cargo.lock .
@@ -6,7 +6,7 @@ RUN mkdir -p src
 RUN echo "fn main() {}" > src/main.rs
 RUN cargo build --release
 
-FROM rust:1.67 as application
+FROM rust:1.77 as application
 WORKDIR /app
 COPY /Cargo.toml .
 COPY /Cargo.lock .
